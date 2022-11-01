@@ -27,7 +27,7 @@ pub struct PoolAccount {
 #[instruction(pool_seed: [u8; 8], token_pool_seed: [u8; 8])]
 pub struct CreatePool<'info> {
     #[account(
-        init,
+        init_if_needed,
         payer=payer,
         seeds=[&pool_seed],
         bump,
@@ -38,10 +38,18 @@ pub struct CreatePool<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    // #[account(
+    //     init_if_needed,
+    //     payer=payer,
+    //     mint::decimals = 9,
+    //     mint::authority=payer,
+    //     mint::freeze_authority=pool_owner
+    // )]
+    #[account(mut)]
     pub token_mint: Account<'info, Mint>,
 
     #[account(
-        init,
+        init_if_needed,
         payer=payer,
         seeds=[&token_pool_seed],
         bump,
@@ -52,10 +60,56 @@ pub struct CreatePool<'info> {
 
     /// CHECK: None
     #[account(
+        mut,
         seeds=[POOL_OWNER_SEEDS.as_ref()],
         bump
     )]
     pub pool_owner: AccountInfo<'info>,
+
+    // /// CHECK: none
+    // #[account(mut)]
+    // pub owner_ata: Account<'info, TokenAccount>,
+
+    pub system_program: Program<'info, System>,
+
+    pub token_program: Program<'info, Token>,
+
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(pool_seed: [u8; 8], token_pool_seed: [u8; 8])]
+pub struct AddLiquidity<'info> {
+    #[account(
+        seeds=[&pool_seed],
+        bump,
+    )]
+    pub pool: Account<'info, PoolAccount>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(
+        seeds=[&token_pool_seed],
+        bump,
+        constraint=token_pool.mint==pool.token_mint,
+        constraint=token_pool.owner==pool_owner.key(),
+    )]
+    pub token_pool: Account<'info, TokenAccount>,
+
+    /// CHECK: None
+    #[account(
+        seeds=[POOL_OWNER_SEEDS.as_ref()],
+        bump
+    )]
+    pub pool_owner: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        constraint=owner_ata.owner==payer.key(),
+        constraint=owner_ata.mint==pool.token_mint,
+    )]
+    pub owner_ata: Account<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
 

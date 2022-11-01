@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::transfer;
+use anchor_spl::token::{ transfer, Transfer };
+
 
 use account::*;
 use helper::*;
@@ -29,7 +30,28 @@ pub mod swap_token {
         pool_account.token_mint = ctx.accounts.token_mint.key().clone();
         pool_account.token_pool = ctx.accounts.token_pool.key().clone();
         pool_account.pool_owner = ctx.accounts.pool_owner.key().clone();
+        Ok(())
+    }
 
+    pub fn add_liquidity(
+        ctx: Context<AddLiquidity>,
+        _pool_seed: [u8; 8],
+        _token_pool_seed: [u8; 8],
+        amount: u64,
+    ) -> Result<()> {
+        // let pool_account = &mut ctx.accounts.pool;
+
+        transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer{
+                    from: ctx.accounts.owner_ata.to_account_info(),
+                    to: ctx.accounts.token_pool.to_account_info(),
+                    authority: ctx.accounts.payer.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
         Ok(())
     }
 
