@@ -1,0 +1,26 @@
+[package]
+name = "swap-token"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "swap_token"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+# [profile.release]
+# overflow-checks = true
+
+[dependencies]
+anchor-lang = "0.25.0"
+anchor-spl = "0.25.0"
+# bytes = { version = "1.2.1", features = ["serde"] }
+spl-token = "^3.2.0"
+solana-program = "1.10.4"
