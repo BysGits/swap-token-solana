@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount, Transfer};
 
-pub const POOL_OWNER_SEEDS: &[u8] = b"POOL_OWNER";
+pub const POOL_OWNER_SEEDS: &[u8; 10] = b"pool_owner";
 
 #[account]
 pub struct PoolAccount {
@@ -24,7 +24,7 @@ pub struct PoolAccount {
 // }
 
 #[derive(Accounts)]
-#[instruction(pool_seed: [u8; 8], token_pool_seed: [u8; 8])]
+#[instruction(pool_seed: [u8; 12], token_pool_seed: [u8; 12])]
 pub struct CreatePool<'info> {
     #[account(
         init_if_needed,
@@ -45,7 +45,7 @@ pub struct CreatePool<'info> {
     //     mint::authority=payer,
     //     mint::freeze_authority=pool_owner
     // )]
-    #[account(mut)]
+    // #[account(mut)]
     pub token_mint: Account<'info, Mint>,
 
     #[account(
@@ -78,11 +78,12 @@ pub struct CreatePool<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(pool_seed: [u8; 8], token_pool_seed: [u8; 8])]
+#[instruction(pool_seed: [u8; 12], token_pool_seed: [u8; 12])]
 pub struct AddLiquidity<'info> {
     #[account(
         seeds=[&pool_seed],
         bump,
+        has_one = pool_owner,
     )]
     pub pool: Account<'info, PoolAccount>,
 
@@ -90,6 +91,7 @@ pub struct AddLiquidity<'info> {
     pub payer: Signer<'info>,
 
     #[account(
+        mut,
         seeds=[&token_pool_seed],
         bump,
         constraint=token_pool.mint==pool.token_mint,
@@ -144,7 +146,11 @@ pub struct SwapToken<'info> {
     )]
     pub pool_owner: AccountInfo<'info>,
 
+    pub system_program: Program<'info, System>,
+
     pub token_program: Program<'info, Token>,
+
+    pub rent: Sysvar<'info, Rent>,
 }
 
 impl<'info> SwapToken<'info> {

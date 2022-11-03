@@ -1,14 +1,14 @@
 [features]
 seeds = false
 skip-lint = false
-[programs.devnet]
+[programs.localnet]
 swap_token = "53kTWZewdo52SxADmfHWnup92xPjw9ZgdzLNS3tDCrQq"
 
-# [registry]
-# url = "https://api.apr.dev"
+[registry]
+url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/home/nisu/.config/solana/id.json"
 
 [scripts]

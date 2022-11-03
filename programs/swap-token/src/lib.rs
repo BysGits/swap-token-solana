@@ -20,8 +20,8 @@ pub mod swap_token {
 
     pub fn create_pool(
         ctx: Context<CreatePool>,
-        _pool_seed: [u8; 8],
-        _token_pool_seed: [u8; 8],
+        _pool_seed: [u8; 12],
+        _token_pool_seed: [u8; 12],
         rate: u64,
     ) -> Result<()> {
         let pool_account = &mut ctx.accounts.pool;
@@ -35,8 +35,8 @@ pub mod swap_token {
 
     pub fn add_liquidity(
         ctx: Context<AddLiquidity>,
-        _pool_seed: [u8; 8],
-        _token_pool_seed: [u8; 8],
+        _pool_seed: [u8; 12],
+        _token_pool_seed: [u8; 12],
         amount: u64,
     ) -> Result<()> {
         // let pool_account = &mut ctx.accounts.pool;
@@ -58,13 +58,14 @@ pub mod swap_token {
     pub fn swap_fixed_rate(
         ctx: Context<SwapToken>,
         bumpy: u8,
-        swap_option: Swap,
+        swap_option: u8,
+        amount: u64,
         internal_tx_id: String,
     ) -> Result<()> {
         let pool = &mut ctx.accounts.pool;
 
         match swap_option {
-            Swap::TokenForPoint { amount } => {
+            1 => {
                 if ctx.accounts.user_token.amount < amount {
                     emit!(SwapFailed {
                         user: ctx.accounts.user.key()
@@ -72,7 +73,7 @@ pub mod swap_token {
                     return err!(SwapError::AmountExceedBalance);
                 }
 
-                let point_to_get = swap_option.how_much_to_get(pool.rate);
+                let point_to_get = how_much_to_get(swap_option, amount, pool.rate);
 
                 transfer(
                     ctx.accounts.transfer_token(
@@ -92,8 +93,8 @@ pub mod swap_token {
                 });
             }
 
-            Swap::PointForToken { amount } => {
-                let token_to_get = swap_option.how_much_to_get(pool.rate);
+            2 => {
+                let token_to_get = how_much_to_get(swap_option, amount, pool.rate);
 
                 if ctx.accounts.token_pool.amount < token_to_get {
                     emit!(SwapFailed {
@@ -120,6 +121,7 @@ pub mod swap_token {
                     user: ctx.accounts.user.key(),
                 });
             }
+            _ => panic!("Unknown value")
         }
 
         Ok(())

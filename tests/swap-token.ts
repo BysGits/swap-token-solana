@@ -1,7 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import { SwapToken } from "../target/types/swap_token";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { SwapToken, IDL } from '../target/types/swap_token';
+import { Connection, PublicKey, Enum } from "@solana/web3.js";
 import {
   createMint,
   createAccount,
@@ -14,6 +14,9 @@ import {
   getOrCreateAssociatedTokenAccount
 } from "@solana/spl-token";
 import { ASSOCIATED_PROGRAM_ID } from "@project-serum/anchor/dist/cjs/utils/token";
+import { assert } from "chai";
+
+import { pool_seed, token_pool_seed, pool_owner_seed } from "../seeds/seed";
 
 const provider = anchor.AnchorProvider.env()
 anchor.setProvider(provider);
@@ -28,14 +31,18 @@ describe("swap-token", () => {
   // Configure the client to use the local cluster.
   // const mint_kp = anchor.web3.Keypair.fromSecretKey(Uint8Array.from([101,30,253,52,242,94,201,159,59,166,152,99,237,246,248,138,92,59,181,248,118,27,49,21,77,18,200,79,56,88,175,243,208,57,120,241,60,28,12,89,214,255,204,218,183,239,184,130,179,13,113,118,17,218,101,33,220,131,107,55,203,156,113,118]))
   const mint_kp = anchor.web3.Keypair.generate()
-  const pool_seed = get_seeds("POOL_SEED")
-  const token_pool_seed = get_seeds("TOKEN_POOL")
-  const pool_owner_seed = get_seeds("POOL_OWNER")
+  
 
+  // const [pda1, bump1] = getPdaFromSeeds(pool_seed)
   const [pda1, bump1] = getPdaFromSeeds(pool_seed)
   const [pda2, bump2] = getPdaFromSeeds(token_pool_seed)
   const [pda3, bump3] = getPdaFromSeeds(pool_owner_seed)
 
+  const user_kp = anchor.web3.Keypair.generate()
+  
+  
+
+  var token_owner;
   var token_user;
   var token_pool;
 
@@ -44,6 +51,10 @@ describe("swap-token", () => {
   console.log(`Pool account: ${pda1}`)
   console.log(`Token pool account: ${pda2}`)
   console.log(`Pool owner account: ${pda3}`)
+
+  before(async() => {
+    await provider.connection.requestAirdrop(user_kp.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL)
+  })
 
   // GK1ywcR2xxLGRDYfPTFGTrhJTBfRvBr9CsrTpJRoJTrS
   it("Create mint account", async() => {
@@ -61,21 +72,23 @@ describe("swap-token", () => {
 
   // 8kCC3zyveL7PQAWQwueFgaKzKu2t56HrvooBvMvZobCZ
   it("Create token account", async() => {
-    token_user = await createAccount(
+    token_owner = await createAccount(
       anchor.getProvider().connection,
       wallet.payer,
       mint_kp.publicKey,
       wallet.publicKey
     )
 
-    console.log(`Newly created ATA: ${token_user}`)
+    console.log(`Newly created owner's ATA: ${token_owner}`)
 
-    // token_pool = await getOrCreateAssociatedTokenAccount(
-    //   anchor.getProvider().connection,
-    //   wallet.payer,
-    //   mint_kp.publicKey,
-    //   wallet.publicKey
-    // )
+    token_user = await createAccount(
+      anchor.getProvider().connection,
+      wallet.payer,
+      mint_kp.publicKey,
+      user_kp.publicKey
+    )
+
+    console.log(`Newly created user's ATA: ${token_user}`)
     
   })
 
@@ -89,7 +102,7 @@ describe("swap-token", () => {
 
     console.log(ata_user.toString())
 
-    const tx = await mintTo(
+    const tx1 = await mintTo(
       anchor.getProvider().connection,
       wallet.payer,
       mint_kp.publicKey,
@@ -98,9 +111,20 @@ describe("swap-token", () => {
       amount
     )
 
-    const accountInfo = await getAccount(anchor.getProvider().connection, token_user);
+    const tx2 = await mintTo(
+      anchor.getProvider().connection,
+      wallet.payer,
+      mint_kp.publicKey,
+      token_user,
+      wallet.payer,
+      amount
+    )
 
-    console.log(accountInfo.amount);
+    const ownerInfo = await getAccount(anchor.getProvider().connection, token_owner);
+    const userInfo = await getAccount(anchor.getProvider().connection, token_user);
+    
+    console.log(ownerInfo.amount);
+    console.log(userInfo.amount);
   })
 
   it("Create pool", async() => {
@@ -120,7 +144,7 @@ describe("swap-token", () => {
         tokenPool: pda2,
         poolOwner: pda3,
         // ownerAta: ata_user
-      }).signers([]).rpc()
+      }).signers([wallet.payer]).rpc()
     } catch (e) {
       console.log(e)
     }
@@ -167,11 +191,67 @@ describe("swap-token", () => {
   // })
 
   it("Swap token for point", async() => {
+    try {
+      var option = 1
+      var amount = new anchor.BN(100000000000)
+      const bumpy = bump3
+      const txId: string = "asdf"
 
+      const ata_owner = await getAssociatedTokenAddress(
+        mint_kp.publicKey,
+        wallet.publicKey
+      )
+      
+      
+      const tx = await program.methods.swapFixedRate(
+        bumpy, option, amount, txId
+      ).accounts({
+        user: user_kp.publicKey,
+        pool: pda1,
+        userToken: token_user,
+        tokenPool: pda2,
+        poolOwner: pda3,
+      }).signers([user_kp]).rpc()
+
+      const pool = await getAccount(anchor.getProvider().connection, pda2);
+      
+      console.log(pool.amount);
+
+    } catch(e) {
+      console.log(e)
+    }
   })
 
   it("Swap point for token", async() => {
+    try {
+      var option = 2
+      var amount = new anchor.BN(100000000000)
+      const bumpy = bump3
+      const txId: string = "asdf"
 
+      const ata_owner = await getAssociatedTokenAddress(
+        mint_kp.publicKey,
+        wallet.publicKey
+      )
+      
+      
+      const tx = await program.methods.swapFixedRate(
+        bumpy, option, amount, txId
+      ).accounts({
+        user: user_kp.publicKey,
+        pool: pda1,
+        userToken: token_user,
+        tokenPool: pda2,
+        poolOwner: pda3,
+      }).signers([user_kp]).rpc()
+
+      const pool = await getAccount(anchor.getProvider().connection, pda2);
+      
+      console.log(pool.amount);
+
+    } catch(e) {
+      console.log(e)
+    }
   })
 
   
@@ -185,6 +265,13 @@ function getPda(seed_str: any) {
 function getPdaFromSeeds(seeds: any) {
   return PublicKey.findProgramAddressSync(
     [Uint8Array.from(seeds)],
+    program.programId
+  )
+}
+
+function getPoolPda() {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(anchor.utils.bytes.utf8.encode("POOL_SEED"))],
     program.programId
   )
 }
