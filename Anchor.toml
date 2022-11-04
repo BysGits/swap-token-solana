@@ -1,14 +1,14 @@
 [features]
 seeds = false
 skip-lint = false
-[programs.localnet]
+[programs.devnet]
 swap_token = "53kTWZewdo52SxADmfHWnup92xPjw9ZgdzLNS3tDCrQq"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "/home/nisu/.config/solana/id.json"
 
 [scripts]

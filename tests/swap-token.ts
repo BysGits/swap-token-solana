@@ -254,7 +254,37 @@ describe("swap-token", () => {
     }
   })
 
-  
+  it("Swap point for token failed", async() => {
+    try {
+      var option = 2
+      var amount = new anchor.BN(100000000000000)
+      const bumpy = bump3
+      const txId: string = "asdf"
+
+      const ata_owner = await getAssociatedTokenAddress(
+        mint_kp.publicKey,
+        wallet.publicKey
+      )
+      
+      
+      const tx = await program.methods.swapFixedRate(
+        bumpy, option, amount, txId
+      ).accounts({
+        user: user_kp.publicKey,
+        pool: pda1,
+        userToken: token_user,
+        tokenPool: pda2,
+        poolOwner: pda3,
+      }).signers([user_kp]).rpc()
+
+      const pool = await getAccount(anchor.getProvider().connection, pda2);
+      
+      console.log(pool.amount);
+
+    } catch(e) {
+      console.log(e)
+    }
+  })
   
 });
 
