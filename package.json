@@ -5,6 +5,7 @@
         "release": "standard-version"
     },
     "dependencies": {
+        "@noble/ed25519": "^1.7.1",
         "@project-serum/anchor": "^0.25.0"
     },
     "devDependencies": {

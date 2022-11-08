@@ -1,5 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount, Transfer};
+use solana_program::instruction::Instruction;
+use solana_program::sysvar::instructions::{ID as IX_ID, load_instruction_at_checked};
+
+use crate::utils::*;
 
 pub const POOL_OWNER_SEEDS: &[u8; 10] = b"pool_owner";
 
@@ -12,6 +16,7 @@ pub struct PoolAccount {
     // pub token2_pool: Pubkey,  // 32
     pub pool_creator: Pubkey, // 32
     pub pool_owner: Pubkey,   // 32
+    pub signer: [u8; 32],     // 32
 }
 
 // #[account]
@@ -27,11 +32,11 @@ pub struct PoolAccount {
 #[instruction(pool_seed: [u8; 12], token_pool_seed: [u8; 12])]
 pub struct CreatePool<'info> {
     #[account(
-        init_if_needed,
+        init,
         payer=payer,
         seeds=[&pool_seed],
         bump,
-        space=8+8+(4*32)
+        space=8+8+(5*32)
     )]
     pub pool: Account<'info, PoolAccount>,
 
@@ -49,7 +54,7 @@ pub struct CreatePool<'info> {
     pub token_mint: Account<'info, Mint>,
 
     #[account(
-        init_if_needed,
+        init,
         payer=payer,
         seeds=[&token_pool_seed],
         bump,
@@ -60,11 +65,16 @@ pub struct CreatePool<'info> {
 
     /// CHECK: None
     #[account(
-        mut,
+        init_if_needed,
         seeds=[POOL_OWNER_SEEDS.as_ref()],
-        bump
+        bump,
+        payer=payer,
+        space=8+8,
     )]
     pub pool_owner: AccountInfo<'info>,
+
+    // /// CHECK: none
+    // pub signer: AccountInfo<'info>,
 
     // /// CHECK: none
     // #[account(mut)]
@@ -146,6 +156,10 @@ pub struct SwapToken<'info> {
     )]
     pub pool_owner: AccountInfo<'info>,
 
+    /// CHECK: unchecked
+    #[account(address = IX_ID)]
+    pub ix_sysvar: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 
     pub token_program: Program<'info, Token>,
@@ -168,5 +182,35 @@ impl<'info> SwapToken<'info> {
                 authority: authority.to_account_info().clone(),
             },
         )
+    }
+
+    /// External instruction that only gets executed if
+    /// an `Ed25519Program.createInstructionWithPublicKey`
+    /// instruction was sent in the same transaction.
+    pub fn verify_ed25519(&self, pubkey: [u8; 32], msg: Vec<u8>, sig: [u8; 64]) -> Result<()> {
+        // Get what should be the Ed25519Program instruction
+        let ix: Instruction = load_instruction_at_checked(0, self.ix_sysvar.as_ref())?;
+
+        // Check that ix is what we expect to have been sent
+        utils::verify_ed25519_ix(&ix, &pubkey, &msg, &sig)?;
+
+        // Do other stuff
+        
+        Ok(())
+    }
+
+    /// External instruction that only gets executed if
+    /// a `Secp256k1Program.createInstructionWithEthAddress`
+    /// instruction was sent in the same transaction.
+    pub fn verify_secp(&self, eth_address: [u8; 20], msg: Vec<u8>, sig: [u8; 64], recovery_id: u8) -> Result<()> {
+        // Get what should be the Secp256k1Program instruction
+        let ix: Instruction = load_instruction_at_checked(0, self.ix_sysvar.as_ref())?;
+
+        // Check that ix is what we expect to have been sent
+        utils::verify_secp256k1_ix(&ix, &eth_address, &msg, &sig, recovery_id)?;
+
+        // Do other stuff
+        
+        Ok(())
     }
 }
