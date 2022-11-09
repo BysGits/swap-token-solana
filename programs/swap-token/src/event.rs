@@ -20,6 +20,7 @@ pub struct SwapCompleted {
     pub point: u64,
     pub time_swap: i64,
     pub user: Pubkey,
+    pub msg: Vec<u8>,
 }
 
 

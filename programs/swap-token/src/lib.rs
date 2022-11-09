@@ -1,13 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{ transfer, Transfer };
-use solana_program::instruction::Instruction;
-use solana_program::sysvar::instructions::{ID as IX_ID, load_instruction_at_checked};
 
 use account::*;
 use helper::*;
 use event::*;
 use error::*;
-use utils::*;
 
 mod account;
 mod helper;
@@ -19,8 +16,6 @@ declare_id!("53kTWZewdo52SxADmfHWnup92xPjw9ZgdzLNS3tDCrQq");
 
 #[program]
 pub mod swap_token {
-    use crate::utils::utils::verify_ed25519_ix;
-
     use super::*;
 
     pub fn create_pool(
@@ -68,10 +63,10 @@ pub mod swap_token {
         swap_option: u8,
         amount: u64,
         internal_tx_id: String,
-        msg: Vec<u8>,
         sig: [u8; 64],
     ) -> Result<()> {
         let pool = &mut ctx.accounts.pool;
+        let message = get_message_bytes(bumpy.clone(), swap_option.clone(), amount.clone(), internal_tx_id.clone());
 
         match swap_option {
             1 => {
@@ -99,6 +94,7 @@ pub mod swap_token {
                     point: point_to_get,
                     time_swap: Clock::get().unwrap().unix_timestamp,
                     user: ctx.accounts.user.key(),
+                    msg: message,
                 });
             }
 
@@ -116,7 +112,7 @@ pub mod swap_token {
                 let pool_account = ctx.accounts.pool.clone();
                 ctx.accounts.verify_ed25519(
                     pool_account.signer, 
-                    msg, 
+                    message.clone(), 
                     sig
                 )?;
 
@@ -140,6 +136,7 @@ pub mod swap_token {
                     point: amount,
                     time_swap: Clock::get().unwrap().unix_timestamp,
                     user: ctx.accounts.user.key(),
+                    msg: message,
                 });
             }
             _ => panic!("Unknown value")

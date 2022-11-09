@@ -1,7 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import { SwapToken, IDL } from '../target/types/swap_token';
-import { Connection, PublicKey, Enum } from "@solana/web3.js";
+import { SwapToken } from '../target/types/swap_token';
+import { Connection, PublicKey } from "@solana/web3.js";
 import {
   createMint,
   createAccount,
@@ -16,6 +16,9 @@ import {
 import { ASSOCIATED_PROGRAM_ID } from "@project-serum/anchor/dist/cjs/utils/token";
 import { assert } from "chai";
 import * as ed from '@noble/ed25519';
+const bs58 = require('bs58');
+const fs = require('fs');
+
 
 import { pool_seed, token_pool_seed, pool_owner_seed } from "../seeds/seed";
 
@@ -35,13 +38,34 @@ describe("swap-token", () => {
 
   const signer_kp = anchor.web3.Keypair.generate()
   const MSG = Uint8Array.from(Buffer.from("this is such a good message to sign"));
-  let signature: Uint8Array;
-  // const [pda1, bump1] = getPdaFromSeeds(pool_seed)
+  console.log(`MSG: ${Buffer.from(MSG)}`)
   const [pda1, bump1] = getPdaFromSeeds(pool_seed)
   const [pda2, bump2] = getPdaFromSeeds(token_pool_seed)
   const [pda3, bump3] = getPdaFromSeeds(pool_owner_seed)
+  console.log(bump3)
 
-  const user_kp = anchor.web3.Keypair.generate()
+  var option_bytes = Uint8Array.from([2])
+  var amount_bytes = Uint8Array.from((new anchor.BN(100000000000)).toArray(undefined,8))
+  const bumpy_bytes = Uint8Array.from([bump3])
+  const txId_bytes = Uint8Array.from(Buffer.from("asdf"))
+  var msg_bytes = new Uint8Array(option_bytes.length + amount_bytes.length + bumpy_bytes.length + txId_bytes.length)
+  var offset = 0
+  msg_bytes.set(bumpy_bytes, offset)
+  offset += bumpy_bytes.length
+  msg_bytes.set(option_bytes, offset)
+  offset += option_bytes.length
+  msg_bytes.set(amount_bytes, offset)
+  offset += amount_bytes.length
+  msg_bytes.set(txId_bytes, offset)
+  console.log(Buffer.from(msg_bytes))
+
+  let signature: Uint8Array;
+  // const [pda1, bump1] = getPdaFromSeeds(pool_seed)
+  
+  // const user_kp = anchor.web3.Keypair.generate()
+  var b = bs58.decode('4AtcXmZzdBEe6zhETa9BtHv7eHJWkPcoc77WiFAL2NJfsRwQesJaaJdBeGpKV8MoHtjGh8HsRQYpcpm6HLvzFud3');
+  var j = new Uint8Array(b.buffer, b.byteOffset, b.byteLength / Uint8Array.BYTES_PER_ELEMENT);
+  const user_kp = anchor.web3.Keypair.fromSecretKey(j)
   
   
 
@@ -54,14 +78,17 @@ describe("swap-token", () => {
   console.log(`Pool account: ${pda1}`)
   console.log(`Token pool account: ${pda2}`)
   console.log(`Pool owner account: ${pda3}`)
+  console.log(`User account: ${user_kp.publicKey}`)
 
   before(async() => {
-    await provider.connection.requestAirdrop(user_kp.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL)
+    // await provider.connection.requestAirdrop(user_kp.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL)
     // Calculate Ed25519 signature
     signature = await ed.sign(
-      MSG,
+      msg_bytes,
       signer_kp.secretKey.slice(0,32)
     );
+
+    console.log(`Sig: ${signature}`)
   })
 
   // GK1ywcR2xxLGRDYfPTFGTrhJTBfRvBr9CsrTpJRoJTrS
@@ -262,7 +289,7 @@ describe("swap-token", () => {
       // }
 
       const tx = await program.methods.swapFixedRate(
-        bumpy, option, amount, txId, Buffer.from(MSG), Array.from(signature)
+        bumpy, option, amount, txId, Array.from(signature)
       ).accounts({
         user: user_kp.publicKey,
         pool: pda1,
@@ -342,7 +369,11 @@ describe("swap-token", () => {
       // }
       
       const tx = await program.methods.swapFixedRate(
-        bumpy, option, amount, txId, Buffer.from(MSG), Array.from(signature)
+        bumpy, 
+        option, 
+        amount, 
+        txId, 
+        Array.from(signature)
       ).accounts({
         user: user_kp.publicKey,
         pool: pda1,
@@ -355,7 +386,7 @@ describe("swap-token", () => {
         anchor.web3.Ed25519Program.createInstructionWithPublicKey(
           {
               publicKey: signer_kp.publicKey.toBytes(),
-              message: MSG,
+              message: msg_bytes,
               signature: signature,
           }
         )
