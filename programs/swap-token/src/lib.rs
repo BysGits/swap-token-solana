@@ -32,6 +32,11 @@ pub mod swap_token {
         pool_account.token_pool = ctx.accounts.token_pool.key().clone();
         pool_account.pool_owner = ctx.accounts.pool_owner.key().clone();
         pool_account.signer = signer;
+
+        emit!(CreatedPool{
+            creator: pool_account.pool_creator,
+            time_created: Clock::get().unwrap().unix_timestamp,
+        });
         Ok(())
     }
 
@@ -54,6 +59,12 @@ pub mod swap_token {
             ),
             amount,
         )?;
+
+        emit!(AddedLiquidity {
+            account: ctx.accounts.owner_ata.key(),
+            amount: amount,
+            time_added: Clock::get().unwrap().unix_timestamp,
+        });
         Ok(())
     }
 

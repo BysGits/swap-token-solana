@@ -17,7 +17,6 @@ import { ASSOCIATED_PROGRAM_ID } from "@project-serum/anchor/dist/cjs/utils/toke
 import { assert } from "chai";
 import * as ed from '@noble/ed25519';
 const bs58 = require('bs58');
-const fs = require('fs');
 
 
 import { pool_seed, token_pool_seed, pool_owner_seed } from "../seeds/seed";
