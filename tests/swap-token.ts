@@ -17,6 +17,8 @@ import { ASSOCIATED_PROGRAM_ID } from "@project-serum/anchor/dist/cjs/utils/toke
 import { assert } from "chai";
 import * as ed from '@noble/ed25519';
 const bs58 = require('bs58');
+import nacl from "tweetnacl";
+import { decodeUTF8 } from "tweetnacl-util";
 
 
 import { pool_seed, token_pool_seed, pool_owner_seed } from "../seeds/seed";
@@ -82,10 +84,12 @@ describe("swap-token", () => {
   before(async() => {
     // await provider.connection.requestAirdrop(user_kp.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL)
     // Calculate Ed25519 signature
-    signature = await ed.sign(
-      msg_bytes,
-      signer_kp.secretKey.slice(0,32)
-    );
+    // signature = await ed.sign(
+    //   msg_bytes,
+    //   signer_kp.secretKey.slice(0,32)
+    // );
+
+    signature = nacl.sign.detached(msg_bytes, signer_kp.secretKey);
 
     console.log(`Sig: ${signature}`)
   })
