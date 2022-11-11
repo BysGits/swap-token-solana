@@ -19,14 +19,10 @@ pub struct PoolAccount {
     pub signer: [u8; 32],     // 32
 }
 
-// #[account]
-// #[derive(Default)]
-// pub struct SwapData {
-//     pub authority: Pubkey,
-//     pub amountIn: u128,
-//     pub amountOut: u128,
-//     pub swapTime: u128,
-// }
+#[account]
+pub struct SwapData {
+    pub invalid_tx_id: bool,
+}
 
 #[derive(Accounts)]
 #[instruction(pool_seed: [u8; 12], token_pool_seed: [u8; 12])]
@@ -43,14 +39,6 @@ pub struct CreatePool<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    // #[account(
-    //     init_if_needed,
-    //     payer=payer,
-    //     mint::decimals = 9,
-    //     mint::authority=payer,
-    //     mint::freeze_authority=pool_owner
-    // )]
-    // #[account(mut)]
     pub token_mint: Account<'info, Mint>,
 
     #[account(
@@ -74,11 +62,12 @@ pub struct CreatePool<'info> {
     pub pool_owner: AccountInfo<'info>,
 
     // /// CHECK: none
-    // pub signer: AccountInfo<'info>,
-
-    // /// CHECK: none
-    // #[account(mut)]
-    // pub owner_ata: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint=owner_ata.owner==payer.key(),
+        constraint=owner_ata.mint==token_mint.key(),
+    )]
+    pub owner_ata: Account<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
 
@@ -131,6 +120,7 @@ pub struct AddLiquidity<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(internal_tx_id: String)]
 pub struct SwapToken<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
@@ -143,6 +133,15 @@ pub struct SwapToken<'info> {
         constraint=user_token.mint==pool.token_mint,
     )]
     pub user_token: Account<'info, TokenAccount>,
+
+    #[account(
+        init,
+        payer = user,
+        seeds = [&internal_tx_id.clone().into_bytes()],
+        bump,
+        space = 8 + 1,
+    )]
+    pub swap_data: Account<'info, SwapData>,
 
     #[account(mut)]
     pub token_pool: Account<'info, TokenAccount>,

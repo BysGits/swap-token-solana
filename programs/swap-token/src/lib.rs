@@ -23,6 +23,7 @@ pub mod swap_token {
         _pool_seed: [u8; 12],
         _token_pool_seed: [u8; 12],
         rate: u64,
+        amount: u64,
         signer: [u8; 32],
     ) -> Result<()> {
         let pool_account = &mut ctx.accounts.pool;
@@ -32,6 +33,18 @@ pub mod swap_token {
         pool_account.token_pool = ctx.accounts.token_pool.key().clone();
         pool_account.pool_owner = ctx.accounts.pool_owner.key().clone();
         pool_account.signer = signer;
+
+        transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer{
+                    from: ctx.accounts.owner_ata.to_account_info(),
+                    to: ctx.accounts.token_pool.to_account_info(),
+                    authority: ctx.accounts.payer.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
 
         emit!(CreatedPool{
             creator: pool_account.pool_creator,
@@ -46,8 +59,6 @@ pub mod swap_token {
         _token_pool_seed: [u8; 12],
         amount: u64,
     ) -> Result<()> {
-        // let pool_account = &mut ctx.accounts.pool;
-
         transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -68,16 +79,88 @@ pub mod swap_token {
         Ok(())
     }
 
-    pub fn swap_fixed_rate(
+    pub fn swap_usdt_to_diamond(
         ctx: Context<SwapToken>,
+        _internal_tx_id: String,
+        bumpy: u8,
+        amount: u64
+    ) -> Result<()> {
+        if ctx.accounts.swap_data.invalid_tx_id == true {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::TxIdCanceled);
+        }
+
+        if amount == 0 {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::AmountIsZero);
+        }
+
+        let pool = &mut ctx.accounts.pool;
+        
+
+        let message = get_message_bytes(bumpy.clone(), 1, amount.clone(), _internal_tx_id.clone());
+
+        if ctx.accounts.user_token.amount < amount {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::AmountExceedBalance);
+        }
+
+        let point_to_get = how_much_to_get(1, amount, pool.rate);
+
+        transfer(
+            ctx.accounts.transfer_token(
+                ctx.accounts.user_token.clone(), 
+                ctx.accounts.token_pool.clone(), 
+                ctx.accounts.user.to_account_info(),
+            ),
+            amount,
+        )?;
+
+        let swap_data = &mut ctx.accounts.swap_data;
+        swap_data.invalid_tx_id = true;
+        
+
+        emit!(SwapCompleted {
+            internal_tx_id: _internal_tx_id,
+            token: amount,
+            point: point_to_get,
+            time_swap: Clock::get().unwrap().unix_timestamp,
+            user: ctx.accounts.user.key(),
+        });
+
+        Ok(())
+    }
+
+    pub fn swap_playing_token(
+        ctx: Context<SwapToken>,
+        _internal_tx_id: String,
         bumpy: u8,
         swap_option: u8,
         amount: u64,
-        internal_tx_id: String,
         sig: [u8; 64],
     ) -> Result<()> {
+        if ctx.accounts.swap_data.invalid_tx_id == true {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::TxIdCanceled);
+        }
+
+        if amount == 0 {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::AmountIsZero);
+        }
+
         let pool = &mut ctx.accounts.pool;
-        let message = get_message_bytes(bumpy.clone(), swap_option.clone(), amount.clone(), internal_tx_id.clone());
+        let message = get_message_bytes(bumpy.clone(), swap_option.clone(), amount.clone(), _internal_tx_id.clone());
 
         match swap_option {
             1 => {
@@ -100,12 +183,11 @@ pub mod swap_token {
                 )?;
 
                 emit!(SwapCompleted {
-                    internal_tx_id: internal_tx_id,
+                    internal_tx_id: _internal_tx_id,
                     token: amount,
                     point: point_to_get,
                     time_swap: Clock::get().unwrap().unix_timestamp,
                     user: ctx.accounts.user.key(),
-                    msg: message,
                 });
             }
 
@@ -127,9 +209,104 @@ pub mod swap_token {
                     sig
                 )?;
 
-                // let ix: Instruction = load_instruction_at_checked(0, &ctx.accounts.ix_sysvar)?;
+                transfer (
+                    ctx.accounts.transfer_token(
+                        ctx.accounts.token_pool.clone(), 
+                        ctx.accounts.user_token.clone(), 
+                        ctx.accounts.pool_owner.to_account_info()
+                    )
+                    .with_signer(&[&[account::POOL_OWNER_SEEDS, &[bumpy]]]),
+                    token_to_get,
+                )?;
 
-                // verify_ed25519_ix(&ix, &pool_account.signer, &msg, &sig)?;
+                emit!(SwapCompleted {
+                    internal_tx_id: _internal_tx_id,
+                    token: token_to_get,
+                    point: amount,
+                    time_swap: Clock::get().unwrap().unix_timestamp,
+                    user: ctx.accounts.user.key(),
+                });
+            }
+            _ => panic!("Unknown value")
+        }
+
+        let swap_data = &mut ctx.accounts.swap_data;
+        swap_data.invalid_tx_id = true;
+
+        Ok(())
+    }
+
+    pub fn swap_flipking_token(
+        ctx: Context<SwapToken>,
+        _internal_tx_id: String,
+        bumpy: u8,
+        swap_option: u8,
+        amount: u64,
+        sig: [u8; 64],
+    ) -> Result<()> {
+        if ctx.accounts.swap_data.invalid_tx_id == true {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::TxIdCanceled);
+        }
+
+        if amount == 0 {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::AmountIsZero);
+        }
+        
+        let pool = &mut ctx.accounts.pool;
+        let message = get_message_bytes(bumpy.clone(), swap_option.clone(), amount.clone(), _internal_tx_id.clone());
+
+        match swap_option {
+            1 => {
+                if ctx.accounts.user_token.amount < amount {
+                    emit!(SwapFailed {
+                        user: ctx.accounts.user.key()
+                    });
+                    return err!(SwapError::AmountExceedBalance);
+                }
+
+                let point_to_get = how_much_to_get(swap_option, amount, pool.rate);
+
+                transfer(
+                    ctx.accounts.transfer_token(
+                        ctx.accounts.user_token.clone(), 
+                        ctx.accounts.token_pool.clone(), 
+                        ctx.accounts.user.to_account_info(),
+                    ),
+                    amount,
+                )?;
+
+                emit!(SwapCompleted {
+                    internal_tx_id: _internal_tx_id,
+                    token: amount,
+                    point: point_to_get,
+                    time_swap: Clock::get().unwrap().unix_timestamp,
+                    user: ctx.accounts.user.key(),
+                });
+            }
+
+            2 => {
+                let token_to_get = how_much_to_get(swap_option, amount, pool.rate);
+
+                if ctx.accounts.token_pool.amount < token_to_get {
+                    emit!(SwapFailed {
+                        user: ctx.accounts.user.key()
+                    });
+                    return err!(SwapError::InsufficientWithdrawn);
+                }
+
+                // verify signature
+                let pool_account = ctx.accounts.pool.clone();
+                ctx.accounts.verify_ed25519(
+                    pool_account.signer, 
+                    message.clone(), 
+                    sig
+                )?;
 
                 transfer (
                     ctx.accounts.transfer_token(
@@ -142,18 +319,40 @@ pub mod swap_token {
                 )?;
 
                 emit!(SwapCompleted {
-                    internal_tx_id: internal_tx_id,
+                    internal_tx_id: _internal_tx_id,
                     token: token_to_get,
                     point: amount,
                     time_swap: Clock::get().unwrap().unix_timestamp,
                     user: ctx.accounts.user.key(),
-                    msg: message,
                 });
             }
             _ => panic!("Unknown value")
         }
 
+        let swap_data = &mut ctx.accounts.swap_data;
+        swap_data.invalid_tx_id = true;
+
         Ok(())
     }
+
+    // fn _check_and_set_data(is_invalid: bool, amount: u64, swap_data: &SwapData) -> Result<()> {
+    //     if is_invalid == true {
+    //         emit!(SwapFailed {
+    //             user: ctx.accounts.user.key()
+    //         });
+    //         return err!(SwapError::TxIdCanceled);
+    //     }
+
+    //     if amount == 0 {
+    //         emit!(SwapFailed {
+    //             user: ctx.accounts.user.key()
+    //         });
+    //         return err!(SwapError::AmountIsZero);
+    //     }
+
+    //     swap_data.user = 
+
+    //     Ok(())
+    // }
 }
 

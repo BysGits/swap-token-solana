@@ -2,8 +2,6 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum SwapError {
-    #[msg("Swap data already exists")]
-    SwapDataExist,
     #[msg("Amount is zero")]
     AmountIsZero,
     #[msg("Amount exceeds balance")]
@@ -12,4 +10,6 @@ pub enum SwapError {
     InsufficientWithdrawn,
     #[msg("Invalid signature")]
     InvalidSignature,
+    #[msg("Tx ID is canceled")]
+    TxIdCanceled,
 }
