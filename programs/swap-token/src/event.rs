@@ -27,3 +27,10 @@ pub struct SwapCompleted {
 pub struct SwapFailed {
     pub user: Pubkey,
 }
+
+#[event]
+pub struct CanceledSwap {
+    pub internal_tx_id: String,
+    pub time_cancel: i64,
+    pub user: Pubkey,
+}

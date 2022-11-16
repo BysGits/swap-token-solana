@@ -15,12 +15,8 @@ no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
 
-# [profile.release]
-# overflow-checks = true
-
 [dependencies]
 anchor-lang = { version = "0.25.0", features = ["init-if-needed"] }
 anchor-spl = "0.25.0"
-# bytes = { version = "1.2.1", features = ["serde"] }
 spl-token = "^3.2.0"
 solana-program = "1.10.4"

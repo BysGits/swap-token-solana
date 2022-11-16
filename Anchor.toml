@@ -1,17 +1,17 @@
 [features]
 seeds = false
 skip-lint = false
-[programs.devnet]
+[programs.localnet]
 swap_token = "53kTWZewdo52SxADmfHWnup92xPjw9ZgdzLNS3tDCrQq"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/home/nisu/.config/solana/id.json"
 
 [scripts]
 test-swap = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/swap-token.ts"
 test-event = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/get-events.ts"
-
+test-info = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/get-account-info.ts"
