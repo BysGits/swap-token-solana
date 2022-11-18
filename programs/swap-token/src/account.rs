@@ -33,7 +33,7 @@ pub struct CreatePool<'info> {
         payer=payer,
         seeds=[&pool_seed],
         bump,
-        space=8+8+(5*32)
+        space=8+8+(5*32)+1
     )]
     pub pool: Account<'info, PoolAccount>,
 
@@ -175,13 +175,6 @@ pub struct CancelSwap<'info> {
     pub pool: Account<'info, PoolAccount>,
 
     #[account(
-        mut,
-        constraint=user_token.owner==user.key(),
-        constraint=user_token.mint==pool.token_mint,
-    )]
-    pub user_token: Account<'info, TokenAccount>,
-
-    #[account(
         init_if_needed,
         payer = user,
         seeds = [&internal_tx_id.clone().into_bytes()],
@@ -189,9 +182,6 @@ pub struct CancelSwap<'info> {
         space = 8 + 1,
     )]
     pub swap_data: Account<'info, SwapData>,
-
-    #[account(mut)]
-    pub token_pool: Account<'info, TokenAccount>,
 
     /// CHECK: none
     #[account(

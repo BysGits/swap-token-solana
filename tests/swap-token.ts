@@ -303,7 +303,7 @@ describe("swap-token", () => {
       var option = 2
       var amount = new anchor.BN(100000000000)
       const bumpy = bump3
-      const txId: string = "0x1"
+      const txId: string = "cancel_001"
 
       var mess = getMessBytes(bumpy, option, amount, txId)
 
@@ -321,9 +321,7 @@ describe("swap-token", () => {
       ).accounts({
         user: user_kp.publicKey,
         pool: pda1,
-        userToken: token_user,
         swapData: swap_data,
-        tokenPool: pda2,
         poolOwner: pda3,
         ixSysvar: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY
       }).signers([user_kp])
@@ -331,7 +329,7 @@ describe("swap-token", () => {
         anchor.web3.Ed25519Program.createInstructionWithPublicKey(
           {
               publicKey: signer_kp.publicKey.toBytes(),
-              message: msg_bytes,
+              message: mess,
               signature: signature,
           }
         )
@@ -352,15 +350,19 @@ describe("swap-token", () => {
         anchor.web3.Ed25519Program.createInstructionWithPublicKey(
           {
               publicKey: signer_kp.publicKey.toBytes(),
-              message: msg_bytes,
+              message: mess,
               signature: signature,
           }
         )
       ]).rpc()
 
     } catch(e) {
-      console.log(e)
+      assert.ok(e.logs.join("").includes("Error Message: Tx ID is canceled."))
+
+      return
     }
+
+    assert.fail("Should have failed to swap due to tx ID had been canceled")
   })
 
   // it("Swap point for token failed", async() => {
