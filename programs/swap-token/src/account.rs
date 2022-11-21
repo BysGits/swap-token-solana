@@ -78,6 +78,34 @@ pub struct CreatePool<'info> {
 
 #[derive(Accounts)]
 #[instruction(pool_seed: [u8; 12], token_pool_seed: [u8; 12])]
+pub struct UpdatePool<'info> {
+    #[account(
+        seeds=[&pool_seed],
+        bump,
+        has_one = pool_owner,
+        constraint=pool.pool_creator==payer.key(),
+    )]
+    pub pool: Account<'info, PoolAccount>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    /// CHECK: None
+    #[account(
+        seeds=[POOL_OWNER_SEEDS.as_ref()],
+        bump
+    )]
+    pub pool_owner: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+
+    pub token_program: Program<'info, Token>,
+
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(pool_seed: [u8; 12], token_pool_seed: [u8; 12])]
 pub struct AddLiquidity<'info> {
     #[account(
         seeds=[&pool_seed],

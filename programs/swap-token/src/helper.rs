@@ -1,9 +1,10 @@
 use core::panic;
+use anchor_lang::prelude::*;
 
 pub fn how_much_to_get(option: u8, amount: u64, rate: u64) -> u64 {
     match option {
-        1 => amount / rate,
-        2 => amount * rate,
+        1 => amount * rate,
+        2 => amount / rate,
         _ => panic!("Unknown value")
     }
 }
@@ -16,10 +17,12 @@ pub fn to_bytes(input: u64) -> Vec<u8> {
     bytes
 }
 
-pub fn get_message_bytes(bumpy: u8, option: u8, amount: u64, tx_id: String) -> Vec<u8> {
+pub fn get_message_bytes(bumpy: u8, option: u8, token_pool: Pubkey, amount: u64, tx_id: String) -> Vec<u8> {
     let mut message = Vec::new();
     message.push(bumpy);
     message.push(option);
+    let token_pool_bytes = &mut token_pool.to_bytes().to_vec();
+    message.append(token_pool_bytes);
     let amount_bytes = &mut to_bytes(amount);
     message.append(amount_bytes);
     let tx_id_bytes = &mut tx_id.into_bytes();

@@ -7,6 +7,12 @@ pub struct CreatedPool {
 }
 
 #[event]
+pub struct UpdatedPool {
+    pub user: Pubkey,
+    pub time_updated: i64,
+}
+
+#[event]
 pub struct AddedLiquidity {
     pub account: Pubkey,
     pub amount: u64,

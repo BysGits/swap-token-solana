@@ -29,19 +29,22 @@ const program = anchor.workspace.SwapToken as Program<SwapToken>;
 
 const wallet = provider.wallet as anchor.Wallet
 
-const rate = new anchor.BN(1)
+const rate = new anchor.BN(10)
 
-const getMessBytes = (bumpy, option, amount, txId) => {
+const getMessBytes = (bumpy: number, option: number, token_pool: anchor.web3.PublicKey, amount: number, txId: String) => {
   var option_bytes = Uint8Array.from([option])
   var amount_bytes = Uint8Array.from((new anchor.BN(amount)).toArray(undefined,8))
   const bumpy_bytes = Uint8Array.from([bumpy])
   const txId_bytes = Uint8Array.from(Buffer.from(txId))
-  var msg_bytes = new Uint8Array(option_bytes.length + amount_bytes.length + bumpy_bytes.length + txId_bytes.length)
+  const token_pool_bytes = token_pool.toBytes()
+  var msg_bytes = new Uint8Array(option_bytes.length + amount_bytes.length + bumpy_bytes.length + txId_bytes.length + token_pool_bytes.length)
   var offset = 0
   msg_bytes.set(bumpy_bytes, offset)
   offset += bumpy_bytes.length
   msg_bytes.set(option_bytes, offset)
   offset += option_bytes.length
+  msg_bytes.set(token_pool_bytes, offset)
+  offset += token_pool_bytes.length
   msg_bytes.set(amount_bytes, offset)
   offset += amount_bytes.length
   msg_bytes.set(txId_bytes, offset)
@@ -62,7 +65,7 @@ describe("swap-token", () => {
   const [pda3, bump3] = getPdaFromSeeds(pool_owner_seed)
   console.log(bump3)
 
-  const msg_bytes = getMessBytes(bump3, 2, 100000000000, tx_id_02)
+  const msg_bytes = getMessBytes(bump3, 2, pda2, 100000000000, tx_id_02)
 
   let signature: Uint8Array;
   // const [pda1, bump1] = getPdaFromSeeds(pool_seed)
@@ -161,6 +164,10 @@ describe("swap-token", () => {
       wallet.payer,
       amount
     )
+
+    const user = await getAccount(anchor.getProvider().connection, token_user);
+      
+    console.log(user.amount);
   })
 
   it("Create pool", async() => {
@@ -190,10 +197,6 @@ describe("swap-token", () => {
     } catch (e) {
       console.log(e)
     }
-
-    const pool = await getAccount(anchor.getProvider().connection, pda2);
-      
-    console.log(pool.amount);
   })
 
   // it("Add liquidity", async() => {
@@ -222,7 +225,7 @@ describe("swap-token", () => {
   it("Swap token for point", async() => {
     try {
       var option = 1
-      var amount = new anchor.BN(100000000000)
+      var amount = new anchor.BN(10000000000)
       var bumpy = bump3
       var txId: string = tx_id_01
 
@@ -246,9 +249,9 @@ describe("swap-token", () => {
       }).signers([user_kp])
       .rpc()
 
-      const pool = await getAccount(anchor.getProvider().connection, pda2);
+      const user = await getAccount(anchor.getProvider().connection, token_user);
       
-      console.log(pool.amount);
+      console.log(user.amount);
     } catch (e) {
       console.log(e)
     }
@@ -289,9 +292,9 @@ describe("swap-token", () => {
         )
       ]).rpc()
 
-      const pool = await getAccount(anchor.getProvider().connection, pda2);
+      const user = await getAccount(anchor.getProvider().connection, token_user);
       
-      console.log(pool.amount);
+      console.log(user.amount);
 
     } catch(e) {
       console.log(e)
@@ -301,11 +304,12 @@ describe("swap-token", () => {
   it("Cancel swap", async() => {
     try {
       var option = 2
-      var amount = new anchor.BN(100000000000)
+      var amount = 100000000000
+      var amount_bn = new anchor.BN(100000000000)
       const bumpy = bump3
       const txId: string = "cancel_001"
 
-      var mess = getMessBytes(bumpy, option, amount, txId)
+      var mess = getMessBytes(bumpy, option, pda2, amount, txId)
 
       signature = nacl.sign.detached(mess, signer_kp.secretKey);
 
@@ -317,7 +321,7 @@ describe("swap-token", () => {
       )
       
       var tx = await program.methods.cancelSwap(
-        txId, option, amount, Array.from(signature)
+        txId, option, amount_bn, Array.from(signature)
       ).accounts({
         user: user_kp.publicKey,
         pool: pda1,
@@ -336,7 +340,7 @@ describe("swap-token", () => {
       ]).rpc()
 
       tx = await program.methods.swapFlipkingToken(
-        txId, option, amount, Array.from(signature)
+        txId, option, amount_bn, Array.from(signature)
       ).accounts({
         user: user_kp.publicKey,
         pool: pda1,

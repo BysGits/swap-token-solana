@@ -55,6 +55,24 @@ pub mod swap_token {
         Ok(())
     }
 
+    pub fn update_pool_info(
+        ctx: Context<UpdatePool>, 
+        _pool_seed: [u8; 12],
+        ratio: u64, 
+        signer: [u8; 32]
+    ) -> Result<()> {
+        let pool_account = &mut ctx.accounts.pool;
+        pool_account.rate = ratio;
+        pool_account.signer = signer;
+
+        emit!(UpdatedPool{
+            user: pool_account.pool_creator,
+            time_updated: Clock::get().unwrap().unix_timestamp,
+        });
+
+        Ok(())
+    }
+
     pub fn add_liquidity(
         ctx: Context<AddLiquidity>,
         _pool_seed: [u8; 12],
@@ -157,7 +175,7 @@ pub mod swap_token {
         }
 
         let pool = ctx.accounts.pool.clone();
-        let message = get_message_bytes(pool.bump, swap_option.clone(), amount.clone(), _internal_tx_id.clone());
+        let message = get_message_bytes(pool.bump, swap_option.clone(), pool.token_pool, amount.clone(), _internal_tx_id.clone());
 
         match swap_option {
             1 => {
@@ -254,7 +272,7 @@ pub mod swap_token {
         }
         
         let pool = ctx.accounts.pool.clone();
-        let message = get_message_bytes(pool.bump, swap_option.clone(), amount.clone(), _internal_tx_id.clone());
+        let message = get_message_bytes(pool.bump, swap_option.clone(), pool.token_pool, amount.clone(), _internal_tx_id.clone());
 
         match swap_option {
             1 => {
@@ -344,7 +362,7 @@ pub mod swap_token {
         }
 
         let pool = ctx.accounts.pool.clone();
-        let message = get_message_bytes(pool.bump, swap_option.clone(), amount.clone(), _internal_tx_id.clone());
+        let message = get_message_bytes(pool.bump, swap_option.clone(), pool.token_pool, amount.clone(), _internal_tx_id.clone());
 
         // verify signature
         ctx.accounts.verify_ed25519(
@@ -365,5 +383,7 @@ pub mod swap_token {
         Ok(())
 
     }
+
+    
 }
 
