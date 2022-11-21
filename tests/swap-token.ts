@@ -57,7 +57,6 @@ const getMessBytes = (bumpy: number, option: number, token_pool: anchor.web3.Pub
 describe("swap-token", () => {
   const mint_kp = anchor.web3.Keypair.generate()
 
-  const signer_kp = anchor.web3.Keypair.generate()
   const MSG = Uint8Array.from(Buffer.from("this is such a good message to sign"));
   console.log(`MSG: ${Buffer.from(MSG)}`)
   const [pda1, bump1] = getPdaFromSeeds(pool_seed)
@@ -76,6 +75,8 @@ describe("swap-token", () => {
   const user_kp = anchor.web3.Keypair.fromSecretKey(j)
   
   console.log(user_kp.publicKey)
+
+  const signer_kp = anchor.web3.Keypair.fromSecretKey(j)
 
   var token_owner;
   var token_user;
@@ -197,6 +198,10 @@ describe("swap-token", () => {
     } catch (e) {
       console.log(e)
     }
+
+    const pool = await getAccount(anchor.getProvider().connection, pda2);
+      
+    console.log("Pool amount: " + pool.amount);
   })
 
   // it("Add liquidity", async() => {
@@ -221,6 +226,40 @@ describe("swap-token", () => {
   //     console.log(e)
   //   }
   // })
+  it("Swap USDT for Diamond", async() => {
+    try {
+      var option = 1
+      var amount = new anchor.BN(100000000000)
+      var bumpy = bump3
+      var txId: string = "0x00001"
+
+      const [swap_data, bump4] = getPdaFromString(txId)
+
+      const ata_owner = await getAssociatedTokenAddress(
+        mint_kp.publicKey,
+        wallet.publicKey
+      )
+
+      const tx = await program.methods.swapUsdtToDiamond(
+        txId, amount
+      ).accounts({
+        user: user_kp.publicKey,
+        pool: pda1,
+        userToken: token_user,
+        swapData: swap_data,
+        tokenPool: pda2,
+        poolOwner: pda3,
+        ixSysvar: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY
+      }).signers([user_kp])
+      .rpc()
+
+      const pool = await getAccount(anchor.getProvider().connection, pda2);
+      
+      console.log(pool.amount);
+    } catch (e) {
+      console.log(e)
+    }
+  })
 
   it("Swap token for point", async() => {
     try {

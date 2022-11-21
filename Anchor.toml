@@ -15,3 +15,5 @@ wallet = "/home/nisu/.config/solana/id.json"
 test-swap = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/swap-token.ts"
 test-event = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/get-events.ts"
 test-info = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/get-account-info.ts"
+
+deploy = "npx ts-node migrations/create_pool.ts"
