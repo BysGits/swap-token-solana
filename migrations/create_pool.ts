@@ -38,32 +38,28 @@ async function main() {
   console.log(`Token pool account: ${pda2}`)
   console.log(`Pool owner account: ${pda3}`)
 
-  try{
-    const ata_user = await getAssociatedTokenAddress(
-      mint_pk,
-      wallet.publicKey
-    )
-    
-    const amount = new anchor.BN(process.env.INITIAL_AMOUNT)
-    
-    const tx = await program.methods.createPool(
-      pool_seed,
-      token_pool_seed,
-      bump3,
-      ratio,
-      amount,
-      Array.from(signer_pk.toBytes())
-    ).accounts({
-      pool: pda1,
-      payer: wallet.publicKey,
-      tokenMint: mint_pk,
-      tokenPool: pda2,
-      poolOwner: pda3,
-      ownerAta: ata_user
-    }).signers([wallet.payer]).rpc()
-  } catch (e) {
-    console.log(e)
-  }
+  const ata_user = await getAssociatedTokenAddress(
+    mint_pk,
+    wallet.publicKey
+  )
+  
+  const amount = new anchor.BN(process.env.INITIAL_AMOUNT)
+  
+  const tx = await program.methods.createPool(
+    pool_seed,
+    token_pool_seed,
+    bump3,
+    ratio,
+    amount,
+    Array.from(signer_pk.toBytes())
+  ).accounts({
+    pool: pda1,
+    payer: wallet.publicKey,
+    tokenMint: mint_pk,
+    tokenPool: pda2,
+    poolOwner: pda3,
+    ownerAta: ata_user
+  }).signers([wallet.payer]).rpc()
 
   const pool = await getAccount(anchor.getProvider().connection, pda2);
     

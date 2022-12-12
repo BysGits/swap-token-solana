@@ -384,6 +384,69 @@ pub mod swap_token {
 
     }
 
+    pub fn claim_usdt(
+        ctx: Context<SwapToken>,
+        _internal_tx_id: String,
+        amount: u64,
+        sig: [u8; 64],
+    ) -> Result<()> {
+        if ctx.accounts.swap_data.invalid_tx_id == true {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::TxIdCanceled);
+        }
+
+        if amount == 0 {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::AmountIsZero);
+        }
+        
+        let pool = ctx.accounts.pool.clone();
+        let message = get_message_bytes(pool.bump, 2, pool.token_pool, amount.clone(), _internal_tx_id.clone());
+
+        let token_to_get = how_much_to_get(2, amount, pool.rate);
+
+        if ctx.accounts.token_pool.amount < token_to_get {
+            emit!(SwapFailed {
+                user: ctx.accounts.user.key()
+            });
+            return err!(SwapError::InsufficientWithdrawn);
+        }
+
+        // verify signature
+        ctx.accounts.verify_ed25519(
+            pool.signer, 
+            message.clone(), 
+            sig
+        )?;
+
+        transfer (
+            ctx.accounts.transfer_token(
+                ctx.accounts.token_pool.clone(), 
+                ctx.accounts.user_token.clone(), 
+                ctx.accounts.pool_owner.to_account_info()
+            )
+            .with_signer(&[&[account::POOL_OWNER_SEEDS, &[pool.bump]]]),
+            token_to_get,
+        )?;
+
+        emit!(SwapCompleted {
+            internal_tx_id: _internal_tx_id,
+            token: token_to_get,
+            point: amount,
+            time_swap: Clock::get().unwrap().unix_timestamp,
+            user: ctx.accounts.user.key(),
+        });
+
+        let swap_data = &mut ctx.accounts.swap_data;
+        swap_data.invalid_tx_id = true;
+
+        Ok(())
+    }
+
     
 }
 

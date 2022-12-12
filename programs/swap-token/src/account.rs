@@ -77,9 +77,10 @@ pub struct CreatePool<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(pool_seed: [u8; 12], token_pool_seed: [u8; 12])]
+#[instruction(pool_seed: [u8; 12])]
 pub struct UpdatePool<'info> {
     #[account(
+        mut,
         seeds=[&pool_seed],
         bump,
         has_one = pool_owner,
@@ -153,6 +154,9 @@ pub struct SwapToken<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
+    #[account(
+        has_one = pool_owner,
+    )]
     pub pool: Account<'info, PoolAccount>,
 
     #[account(
@@ -171,7 +175,11 @@ pub struct SwapToken<'info> {
     )]
     pub swap_data: Account<'info, SwapData>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint=token_pool.mint==pool.token_mint,
+        constraint=token_pool.owner== pool.pool_owner,
+    )]
     pub token_pool: Account<'info, TokenAccount>,
 
     /// CHECK: none

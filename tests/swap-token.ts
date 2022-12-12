@@ -408,6 +408,50 @@ describe("swap-token", () => {
     assert.fail("Should have failed to swap due to tx ID had been canceled")
   })
 
+
+  it("Claim USDT", async() => {
+    try {
+      var amount = new anchor.BN(100000000000)
+      const bumpy = bump3
+      const txId: string = tx_id_02
+
+      const [swap_data, bump4] = getPdaFromString(txId)
+
+      const ata_owner = await getAssociatedTokenAddress(
+        mint_kp.publicKey,
+        wallet.publicKey
+      )
+      
+      const tx = await program.methods.claimUsdt(
+        txId, amount, Array.from(signature)
+      ).accounts({
+        user: user_kp.publicKey,
+        pool: pda1,
+        userToken: token_user,
+        swapData: swap_data,
+        tokenPool: pda2,
+        poolOwner: pda3,
+        ixSysvar: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY
+      }).signers([user_kp])
+      .preInstructions([
+        anchor.web3.Ed25519Program.createInstructionWithPublicKey(
+          {
+              publicKey: signer_kp.publicKey.toBytes(),
+              message: msg_bytes,
+              signature: signature,
+          }
+        )
+      ]).rpc()
+
+      const user = await getAccount(anchor.getProvider().connection, token_user);
+      
+      console.log(user.amount);
+
+    } catch(e) {
+      console.log(e)
+    }
+  })
+
   // it("Swap point for token failed", async() => {
   //   try {
   //     var option = 2
